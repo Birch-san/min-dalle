@@ -1,8 +1,11 @@
 import os
 import json
 import numpy
+from numpy import ndarray
+from torch import FloatTensor
 from PIL import Image
-from typing import Tuple, List
+from typing import Tuple, List, NamedTuple, Dict, Callable, Union
+from typing_extensions import TypeAlias
 import torch
 
 from min_dalle.load_params import load_dalle_bart_flax_params
@@ -25,7 +28,6 @@ def load_dalle_bart_metadata(path: str) -> Tuple[dict, dict, List[str]]:
         merges = f.read().split("\n")[1:-1]
     return config, vocab, merges
 
-
 def tokenize_text(
     text: str, 
     config: dict,
@@ -40,37 +42,34 @@ def tokenize_text(
     text_tokens[1, :2] = [tokens[0], tokens[-1]]
     return text_tokens
 
+class ImgDeps(NamedTuple):
+    text_tokens_arr: numpy.ndarray
+    config: dict
+    params_dalle_bart: Dict[str, ndarray]
 
-def generate_image_from_text(
+class GenerateImageTokensSpec(NamedTuple):
+    seed: int
+
+ImageTokensBackend: TypeAlias = Callable[[GenerateImageTokensSpec], Union[ndarray, None]]
+
+def get_img_dependencies(
     text: str,
     is_mega: bool = False,
-    is_torch: bool = False,
-    seed: int = 0,
-    image_token_count: int = 256
-) -> Image.Image:
+) -> ImgDeps:
     model_name = 'mega' if is_mega else 'mini'
     model_path = './pretrained/dalle_bart_{}'.format(model_name)
     config, vocab, merges = load_dalle_bart_metadata(model_path)
-    text_tokens = tokenize_text(text, config, vocab, merges)
-    params_dalle_bart = load_dalle_bart_flax_params(model_path)
+    text_tokens_arr: ndarray = tokenize_text(text, config, vocab, merges)
+    params_dalle_bart: Dict[str, ndarray] = load_dalle_bart_flax_params(model_path)
+    return ImgDeps(text_tokens_arr=text_tokens_arr, config=config, params_dalle_bart=params_dalle_bart)
 
-    if is_torch:
-        image_tokens = generate_image_tokens_torch(
-            text_tokens = text_tokens,
-            seed = seed,
-            config = config,
-            params = params_dalle_bart,
-            image_token_count = image_token_count
-        )
-        if image_token_count == config['image_length']:
-            image = detokenize_torch(image_tokens)
-            return Image.fromarray(image)
-    else:
-        image_tokens = generate_image_tokens_flax(
-            text_tokens = text_tokens, 
-            seed = seed,
-            config = config,
-            params = params_dalle_bart,
-        )
-        image = detokenize_torch(torch.tensor(image_tokens))
-        return Image.fromarray(image)
+def generate_image_from_text(
+    image_tokens_backend: ImageTokensBackend,
+    seed: int = 0,
+) -> Image.Image:
+    generate_image_tokens_spec = GenerateImageTokensSpec(
+        seed = seed
+    )
+
+    image_arr: Union[ndarray, None] = image_tokens_backend(generate_image_tokens_spec)
+    return None if image_arr is None else Image.fromarray(image_arr)

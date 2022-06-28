@@ -29,7 +29,7 @@ def encode_torch(
         glu_embed_count = config['encoder_ffn_dim']
     )
     encoder_params = convert_dalle_bart_torch_from_flax_params(
-        params.pop('encoder'), 
+        params.get('encoder'), 
         layer_count=config['encoder_layers'], 
         is_encoder=True
     )

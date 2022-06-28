@@ -10,3 +10,5 @@
 **/generated
 **/pretrained
 **/*.msgpack
+/venv/
+/out/
