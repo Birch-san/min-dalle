@@ -1,6 +1,6 @@
 import numpy
 from typing import Dict
-from torch import LongTensor, FloatTensor
+from torch import LongTensor, FloatTensor, device
 import torch
 torch.no_grad()
 
@@ -27,7 +27,7 @@ def encode_torch(
         text_vocab_count = config['encoder_vocab_size'],
         text_token_count = config['max_text_length'],
         glu_embed_count = config['encoder_ffn_dim']
-    )
+    ).to('mps')
     encoder_params = convert_dalle_bart_torch_from_flax_params(
         params.get('encoder'), 
         layer_count=config['encoder_layers'], 
@@ -62,9 +62,9 @@ def decode_torch(
         batch_count = 2,
         start_token = config['decoder_start_token_id'],
         is_verbose = True
-    )
+    ).to('mps')
     decoder_params = convert_dalle_bart_torch_from_flax_params(
-        params.pop('decoder'), 
+        params.get('decoder'), 
         layer_count=config['decoder_layers'],
         is_encoder=False
     )
@@ -106,8 +106,8 @@ def detokenize_torch(image_tokens: LongTensor) -> numpy.ndarray:
     print("detokenizing image")
     model_path = './pretrained/vqgan'
     params = load_vqgan_torch_params(model_path)
-    detokenizer = VQGanDetokenizer()
+    detokenizer = VQGanDetokenizer().to('mps')
     detokenizer.load_state_dict(params)
     image = detokenizer.forward(image_tokens).to(torch.uint8)
-    return image.detach().numpy()
+    return image.detach().cpu().numpy()
     

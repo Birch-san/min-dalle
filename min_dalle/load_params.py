@@ -29,7 +29,7 @@ def load_vqgan_torch_params(path: str) -> Dict[str, torch.Tensor]:
             P[j] = P.pop(i).transpose(3, 2, 0, 1)
 
     for i in P:
-        P[i] = torch.tensor(P[i])
+        P[i] = torch.tensor(P[i], device='mps')
         # if torch.cuda.is_available(): P[i] = P[i].cuda()
 
     P['embedding.weight'] = P.pop('quantize.embedding.embedding')
@@ -86,7 +86,7 @@ def convert_dalle_bart_torch_from_flax_params(
     P: Dict[str, numpy.ndarray] = traverse_util.flatten_dict(P, sep='.')
 
     for i in P:
-        P[i] = torch.tensor(P[i])
+        P[i] = torch.tensor(P[i], device='mps')
         # if torch.cuda.is_available(): P[i] = P[i].cuda()
 
     for i in list(P):

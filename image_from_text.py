@@ -4,12 +4,13 @@ from PIL import Image
 import time
 from typing import Union
 
+import numpy
 from numpy import ndarray
 import torch
 from torch import LongTensor, FloatTensor
 
-from min_dalle.min_dalle_torch import encode_torch, generate_image_tokens_torch
-from min_dalle.min_dalle_flax import generate_image_tokens_flax
+from min_dalle.min_dalle_torch import encode_torch, decode_torch, generate_image_tokens_torch
+from min_dalle.min_dalle_flax import generate_image_tokens_flax, encode_flax, decode_flax
 from min_dalle.generate_image import generate_image_from_text, get_img_dependencies, detokenize_torch, ImgDeps, ImageTokensBackend, GenerateImageTokensSpec
 
 
@@ -61,8 +62,12 @@ if __name__ == '__main__':
     print(f"prepared dependencies in {end_deps - start_deps} secs")
 
     (text_tokens_arr, config, params_dalle_bart) = deps
-    text_tokens: LongTensor = torch.tensor(text_tokens_arr).to(torch.long)
-    encoder_state: FloatTensor = encode_torch(
+    text_tokens: LongTensor = torch.tensor(text_tokens_arr, device='mps').to(torch.long)
+    encoder_state: Union[FloatTensor, ndarray] = encode_torch(
+        text_tokens, 
+        config, 
+        params_dalle_bart
+    ) if args.torch else encode_flax(
         text_tokens, 
         config, 
         params_dalle_bart
@@ -70,10 +75,11 @@ if __name__ == '__main__':
 
     def torch_backend(spec: GenerateImageTokensSpec) -> Union[ndarray, None]:
         (seed,) = spec
-        image_tokens = generate_image_tokens_torch(
-            text_tokens = text_tokens,
-            seed = seed,
-            config = config,
+        image_tokens = decode_torch(
+            text_tokens, 
+            encoder_state, 
+            config, 
+            seed, 
             params = params_dalle_bart,
             image_token_count = args.image_token_count
         )
@@ -84,14 +90,16 @@ if __name__ == '__main__':
 
     def flax_backend(spec: GenerateImageTokensSpec) -> ndarray:
         (seed,) = spec
-        image_tokens = generate_image_tokens_flax(
-            text_tokens = text_tokens, 
-            seed = seed,
-            config = config,
-            params = params_dalle_bart,
+        image_tokens = decode_flax(
+            text_tokens, 
+            encoder_state, 
+            config, 
+            seed, 
+            params = params_dalle_bart
         )
-        image = detokenize_torch(torch.tensor(image_tokens))
-        return image
+        image_tokens_arr = numpy.array(image_tokens)
+        print("image tokens", list(image_tokens_arr))
+        return image_tokens_arr
 
     image_tokens_backend: ImageTokensBackend = torch_backend if args.torch else flax_backend
 

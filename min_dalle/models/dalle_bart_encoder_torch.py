@@ -43,8 +43,8 @@ class AttentionTorch(nn.Module):
     ) -> FloatTensor:
         attention_bias = torch.where(
             attention_mask,
-            torch.full(attention_mask.shape, 0.0),
-            torch.full(attention_mask.shape, -torch.inf),
+            torch.full(attention_mask.shape, 0.0, device='mps'),
+            torch.full(attention_mask.shape, -torch.inf, device='mps')
         )
         attention_weights: FloatTensor = torch.einsum(
             'bqhc,bkhc->bhqk',
@@ -128,7 +128,7 @@ class DalleBartEncoderTorch(nn.Module):
     def forward(self, text_tokens: LongTensor) -> FloatTensor:
         attention_mask = text_tokens.not_equal(1)
         batch_count, token_count = text_tokens.shape
-        pose_tokens = torch.stack([torch.arange(token_count)] * batch_count)
+        pose_tokens = torch.stack([torch.arange(token_count, device='mps')] * batch_count)
         encoder_state = (
             self.embed_tokens.forward(text_tokens) +
             self.embed_positions.forward(pose_tokens)

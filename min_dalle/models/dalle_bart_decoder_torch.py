@@ -1,6 +1,6 @@
 from typing import List, Tuple
 import torch
-from torch import LongTensor, nn, FloatTensor, BoolTensor
+from torch import LongTensor, device, nn, FloatTensor, BoolTensor
 torch.no_grad()
 
 from .dalle_bart_encoder_torch import GLUTorch, AttentionTorch
@@ -37,7 +37,7 @@ class DecoderSelfAttentionTorch(AttentionTorch):
         shape = (batch_count, 1) + keys_values.shape[2:]
         keys = self.k_proj.forward(decoder_state).view(shape)
         values = self.v_proj.forward(decoder_state).view(shape)
-        token_mask = torch.arange(token_count) == token_index
+        token_mask = torch.arange(token_count, device='mps') == token_index
         keys_values = torch.where(
             token_mask[None, :, None, None], 
             torch.cat([keys, values]), 
@@ -77,7 +77,7 @@ class DecoderLayerTorch(nn.Module):
         # Self Attention
         residual = decoder_state
         decoder_state = self.pre_self_attn_layer_norm.forward(decoder_state)
-        self_attn_mask = torch.arange(self.image_token_count) < token_index + 1
+        self_attn_mask = torch.arange(self.image_token_count, device='mps') < token_index + 1
         self_attn_mask = torch.stack([self_attn_mask] * decoder_state.shape[0])
         decoder_state, keys_values_state = self.self_attn.forward(
             decoder_state,
@@ -124,9 +124,9 @@ class DalleBartDecoderTorch(nn.Module):
         self.is_verbose = is_verbose
         self.layer_count = layer_count
         self.sample_token_count = sample_token_count
-        self.start_token = torch.tensor([start_token]).to(torch.long)
-        self.pad_token = torch.tensor([1]).to(torch.long)
-        self.condition_factor = torch.tensor([10]).to(torch.float)
+        self.start_token = torch.tensor([start_token], device='mps').to(torch.long)
+        self.pad_token = torch.tensor([1], device='mps').to(torch.long)
+        self.condition_factor = torch.tensor([10], device='mps').to(torch.float)
         # if torch.cuda.is_available(): 
         #     self.start_token = self.start_token.cuda()
         #     self.pad_token = self.pad_token.cuda()
@@ -188,7 +188,7 @@ class DalleBartDecoderTorch(nn.Module):
         top_logits = logits.sort(descending=True)[0][:50]
         probs = torch.where(
             logits < top_logits[-1],
-            torch.zeros([1]),
+            torch.zeros([1], device='mps'),
             torch.exp(logits - top_logits[0])
         )
         return probs, keys_values
@@ -199,11 +199,11 @@ class DalleBartDecoderTorch(nn.Module):
         encoder_state: FloatTensor
     ) -> LongTensor:
         image_tokens: List[LongTensor] = []
-        keys_values_state = torch.zeros(self.keys_values_state_shape)
+        keys_values_state = torch.zeros(self.keys_values_state_shape, device='mps')
         image_token = self.start_token
 
         for i in range(self.sample_token_count):
-            token_index = torch.tensor([i]).to(torch.long)
+            token_index = torch.tensor([i], device='mps').to(torch.long)
             # if torch.cuda.is_available(): token_index = token_index.cuda()
             probs, keys_values_state = self.decode_step(
                 text_tokens = text_tokens,
@@ -216,7 +216,7 @@ class DalleBartDecoderTorch(nn.Module):
             image_tokens += [image_token]
         
             if self.is_verbose:
-                token = int(image_token.detach().numpy())
+                token = int(image_token.detach().cpu().numpy())
                 print("image token {} is {}".format(i, token))
             
         return torch.cat(image_tokens)
