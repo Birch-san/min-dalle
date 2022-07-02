@@ -68,7 +68,7 @@ class AttentionBase(nn.Module):
             values
         )
         shape = attention_output.shape[:2] + (self.embed_count,)
-        attention_output = attention_output.reshape(shape)
+        attention_output = attention_output.reshape(shape).contiguous()
         attention_output = self.out_proj.forward(attention_output)
         return attention_output
 
