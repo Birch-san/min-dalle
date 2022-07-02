@@ -205,7 +205,7 @@ class DalleBartDecoder(nn.Module):
                 encoder_state = encoder_state,
                 attention_state = attention_state,
                 prev_token = image_token,
-                token_index = self.token_indices[[i]]
+                token_index = self.token_indices[i].unsqueeze(0)
             )
 
             image_token = torch.multinomial(probs, 1)
