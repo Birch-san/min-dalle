@@ -179,7 +179,8 @@ class DalleBartDecoder(nn.Module):
         a = self.condition_factor
         logits: FloatTensor = (1 - a) * logits[0, -1] + a * logits[1, -1]
 
-        top_logits, _ = logits.topk(50, dim=-1)
+        top_logits, _ = logits.cpu().topk(50, dim=-1)
+        top_logits = top_logits.to_accelerator()
         probs = torch.where(
             logits < top_logits[-1],
             self.zero_prob,
