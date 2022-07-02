@@ -36,7 +36,7 @@ class AttentionBase(nn.Module):
         self.v_proj = nn.Linear(embed_count, embed_count, bias=False)
         self.q_proj = nn.Linear(embed_count, embed_count, bias=False)
         self.out_proj = nn.Linear(embed_count, embed_count, bias=False)
-        self.one = torch.ones((1, 1)).to_accelerator()
+        self.one = torch.ones((1, 1)).contiguous().to_accelerator()
     
     def forward(
         self,
@@ -133,7 +133,7 @@ class DalleBartEncoder(nn.Module):
         self.layernorm_embedding = nn.LayerNorm(embed_count)
         self.final_ln = nn.LayerNorm(embed_count)
         self.token_indices = torch.arange(text_token_count).to(torch.long)
-        self.token_indices = self.token_indices.to_accelerator()
+        self.token_indices = self.token_indices.contiguous().to_accelerator()
 
     def forward(self, text_tokens: LongTensor) -> FloatTensor:
         attention_mask = text_tokens.not_equal(1)

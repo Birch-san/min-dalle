@@ -61,7 +61,7 @@ class DecoderLayer(nn.Module):
         self.glu = GLU(embed_count, glu_embed_count)
 
         self.token_indices = torch.arange(self.image_token_count)
-        self.token_indices = self.token_indices.to_accelerator()
+        self.token_indices = self.token_indices.contiguous().to_accelerator()
 
     def forward(
         self,
@@ -143,9 +143,9 @@ class DalleBartDecoder(nn.Module):
             image_token_count,
             embed_count
         )
-        self.zero_prob = torch.zeros([1]).to_accelerator()
-        self.token_indices = torch.arange(self.sample_token_count).to_accelerator()
-        self.start_token = torch.tensor([start_token]).to(torch.long).to_accelerator()
+        self.zero_prob = torch.zeros([1]).contiguous().to_accelerator()
+        self.token_indices = torch.arange(self.sample_token_count).contiguous().to_accelerator()
+        self.start_token = torch.tensor([start_token]).to(torch.long).contiguous().to_accelerator()
 
 
     def decode_step(
@@ -180,7 +180,7 @@ class DalleBartDecoder(nn.Module):
         logits: FloatTensor = (1 - a) * logits[0, -1] + a * logits[1, -1]
 
         top_logits, _ = logits.cpu().topk(50, dim=-1)
-        top_logits = top_logits.to_accelerator()
+        top_logits = top_logits.contiguous().to_accelerator()
         probs = torch.where(
             logits < top_logits[-1],
             self.zero_prob,
@@ -196,7 +196,7 @@ class DalleBartDecoder(nn.Module):
     ) -> LongTensor:
         image_tokens: List[LongTensor] = []
         attention_state = torch.zeros(self.attention_state_shape)
-        attention_state = attention_state.to_accelerator()
+        attention_state = attention_state.contiguous().to_accelerator()
         image_token = self.start_token
 
         for i in range(self.sample_token_count):

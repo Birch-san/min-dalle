@@ -158,7 +158,7 @@ class MinDalle:
         text_tokens[1, :len(tokens)] = tokens
 
         text_tokens = torch.tensor(text_tokens).to(torch.long)
-        text_tokens = text_tokens.to_accelerator()
+        text_tokens = text_tokens.contiguous().to_accelerator()
 
         if not self.is_reusable: self.init_encoder()
         if self.is_verbose: print("encoding text tokens")
