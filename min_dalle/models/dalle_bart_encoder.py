@@ -45,9 +45,9 @@ class AttentionBase(nn.Module):
         queries: FloatTensor,
         attention_mask: BoolTensor
     ) -> FloatTensor:
-        keys = keys.reshape(keys.shape[:2] + (self.head_count, -1))
-        values = values.reshape(values.shape[:2] + (self.head_count, -1))
-        queries = queries.reshape(queries.shape[:2] + (self.head_count, -1))
+        keys = keys.reshape(keys.shape[:2] + (self.head_count, -1)).contiguous()
+        values = values.reshape(values.shape[:2] + (self.head_count, -1)).contiguous()
+        queries = queries.reshape(queries.shape[:2] + (self.head_count, -1)).contiguous()
         queries /= queries.shape[-1] ** 0.5
 
         attention_bias = torch.where(

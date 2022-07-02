@@ -15,3 +15,6 @@
 dist
 build
 README
+/venv/
+/out/
+/generated.png

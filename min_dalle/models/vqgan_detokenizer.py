@@ -49,16 +49,16 @@ class AttentionBlock(Module):
         q = self.q.forward(h)
         k = self.k.forward(h)
         v = self.v.forward(h)
-        q = q.reshape(BATCH_COUNT, n, 2 ** 8)
-        q = q.permute(0, 2, 1)
-        k = k.reshape(BATCH_COUNT, n, 2 ** 8)
+        q = q.reshape(BATCH_COUNT, n, 2 ** 8).contiguous()
+        q = q.permute(0, 2, 1).contiguous()
+        k = k.reshape(BATCH_COUNT, n, 2 ** 8).contiguous()
         w = torch.bmm(q, k)
         w /= n ** 0.5
         w = torch.softmax(w, dim=2)
-        v = v.reshape(BATCH_COUNT, n, 2 ** 8)
-        w = w.permute(0, 2, 1)
+        v = v.reshape(BATCH_COUNT, n, 2 ** 8).contiguous()
+        w = w.permute(0, 2, 1).contiguous()
         h = torch.bmm(v, w)
-        h = h.reshape(BATCH_COUNT, n, 2 ** 4, 2 ** 4)
+        h = h.reshape(BATCH_COUNT, n, 2 ** 4, 2 ** 4).contiguous()
         h = self.proj_out.forward(h)
         return x + h
 
@@ -170,10 +170,10 @@ class VQGanDetokenizer(Module):
 
     def forward(self, z: Tensor) -> Tensor:
         z = self.embedding.forward(z)
-        z = z.view((BATCH_COUNT, 2 ** 4, 2 ** 4, 2 ** 8))
+        z = z.view((BATCH_COUNT, 2 ** 4, 2 ** 4, 2 ** 8)).contiguous()
         z = z.permute(0, 3, 1, 2).contiguous()
         z = self.post_quant_conv.forward(z)
         z = self.decoder.forward(z)
-        z = z.permute(0, 2, 3, 1)
+        z = z.permute(0, 2, 3, 1).contiguous()
         z = z.clip(0.0, 1.0) * 255
         return z[0]
