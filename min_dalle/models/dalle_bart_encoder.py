@@ -3,6 +3,8 @@ import torch
 from torch import nn, BoolTensor, FloatTensor, LongTensor
 torch.set_grad_enabled(False)
 
+from .utils import *
+
 
 class GLU(nn.Module):
     def __init__(self, count_in_out, count_middle):
@@ -34,8 +36,7 @@ class AttentionBase(nn.Module):
         self.v_proj = nn.Linear(embed_count, embed_count, bias=False)
         self.q_proj = nn.Linear(embed_count, embed_count, bias=False)
         self.out_proj = nn.Linear(embed_count, embed_count, bias=False)
-        self.one = torch.ones((1, 1))
-        if torch.cuda.is_available(): self.one = self.one.cuda()
+        self.one = torch.ones((1, 1)).to_accelerator()
     
     def forward(
         self,
@@ -132,8 +133,7 @@ class DalleBartEncoder(nn.Module):
         self.layernorm_embedding = nn.LayerNorm(embed_count)
         self.final_ln = nn.LayerNorm(embed_count)
         self.token_indices = torch.arange(text_token_count).to(torch.long)
-        if torch.cuda.is_available(): 
-            self.token_indices = self.token_indices.cuda()
+        self.token_indices = self.token_indices.to_accelerator()
 
     def forward(self, text_tokens: LongTensor) -> FloatTensor:
         attention_mask = text_tokens.not_equal(1)

@@ -4,7 +4,7 @@ from torch import LongTensor, nn, FloatTensor, BoolTensor
 torch.set_grad_enabled(False)
 
 from .dalle_bart_encoder import GLU, AttentionBase
-
+from .utils import *
 
 class DecoderCrossAttention(AttentionBase):
     def forward(
@@ -61,8 +61,7 @@ class DecoderLayer(nn.Module):
         self.glu = GLU(embed_count, glu_embed_count)
 
         self.token_indices = torch.arange(self.image_token_count)
-        if torch.cuda.is_available():
-            self.token_indices = self.token_indices.cuda()
+        self.token_indices = self.token_indices.to_accelerator()
 
     def forward(
         self,
@@ -144,13 +143,9 @@ class DalleBartDecoder(nn.Module):
             image_token_count,
             embed_count
         )
-        self.zero_prob = torch.zeros([1])
-        self.token_indices = torch.arange(self.sample_token_count)
-        self.start_token = torch.tensor([start_token]).to(torch.long)
-        if torch.cuda.is_available():
-            self.zero_prob = self.zero_prob.cuda()
-            self.token_indices = self.token_indices.cuda()
-            self.start_token = self.start_token.cuda()
+        self.zero_prob = torch.zeros([1]).to_accelerator()
+        self.token_indices = torch.arange(self.sample_token_count).to_accelerator()
+        self.start_token = torch.tensor([start_token]).to(torch.long).to_accelerator()
 
 
     def decode_step(
@@ -200,8 +195,7 @@ class DalleBartDecoder(nn.Module):
     ) -> LongTensor:
         image_tokens: List[LongTensor] = []
         attention_state = torch.zeros(self.attention_state_shape)
-        if torch.cuda.is_available(): 
-            attention_state = attention_state.cuda()
+        attention_state = attention_state.to_accelerator()
         image_token = self.start_token
 
         for i in range(self.sample_token_count):

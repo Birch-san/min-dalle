@@ -9,6 +9,7 @@ import random
 torch.set_grad_enabled(False)
 torch.set_num_threads(os.cpu_count())
 
+from .models.utils import *
 from .text_tokenizer import TextTokenizer
 from .models import DalleBartEncoder, DalleBartDecoder, VQGanDetokenizer
 
@@ -113,7 +114,7 @@ class MinDalle:
         params = torch.load(self.encoder_params_path)
         self.encoder.load_state_dict(params, strict=False)
         del params
-        if torch.cuda.is_available(): self.encoder = self.encoder.cuda()
+        self.encoder = self.encoder.to_accelerator()
 
 
     def init_decoder(self):
@@ -134,7 +135,7 @@ class MinDalle:
         params = torch.load(self.decoder_params_path)
         self.decoder.load_state_dict(params, strict=False)
         del params
-        if torch.cuda.is_available(): self.decoder = self.decoder.cuda()
+        self.decoder = self.decoder.to_accelerator()
 
 
     def init_detokenizer(self):
@@ -145,7 +146,7 @@ class MinDalle:
         params = torch.load(self.detoker_params_path)
         self.detokenizer.load_state_dict(params)
         del params
-        if torch.cuda.is_available(): self.detokenizer = self.detokenizer.cuda()
+        self.detokenizer = self.detokenizer.to_accelerator()
 
 
     def generate_image_tokens(self, text: str, seed: int) -> LongTensor:
@@ -157,7 +158,7 @@ class MinDalle:
         text_tokens[1, :len(tokens)] = tokens
 
         text_tokens = torch.tensor(text_tokens).to(torch.long)
-        if torch.cuda.is_available(): text_tokens = text_tokens.cuda()
+        text_tokens = text_tokens.to_accelerator()
 
         if not self.is_reusable: self.init_encoder()
         if self.is_verbose: print("encoding text tokens")
