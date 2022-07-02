@@ -209,6 +209,8 @@ class DalleBartDecoder(nn.Module):
             )
 
             image_token = torch.multinomial(probs, 1)
+            # image_token = torch.argmax(probs).unsqueeze(0)
+            print(image_token, torch.argmax(probs))
             image_tokens += [image_token]
             
         return torch.cat(image_tokens)
